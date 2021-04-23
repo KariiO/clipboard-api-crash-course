@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Clipboard API</title>
+    <link rel="icon" type="image/png" href="favicon.png"/>
+</head>
+<style>
+    #clipboard-image, #clipboard-image-write {
+        display: inline-block;
+        border: 1px solid black;
+        box-sizing: border-box;
+        margin-bottom: 2px;
+    }
+
+    #clipboard-text, #clipboard-text-write {
+        vertical-align: top;
+        width: 200px;
+        height: 200px;
+        box-sizing: border-box;
+        border-color: black;
+        outline: 0;
+        margin-bottom: 2px;
+    }
+
+    #clipboard-html, #clipboard-html-write {
+        vertical-align: top;
+        display: inline-block;
+        width: 404px;
+        height: 200px;
+        overflow: hidden;
+        box-sizing: border-box;
+        border: 1px solid black;
+    }
+</style>
+<body>
+<p>Permission state for <strong>clipboard-write</strong>: <span id="clipboard-write-permission"></span></p>
+<p>Permission state for <strong>clipboard-read</strong>: <span id="clipboard-read-permission"></span></p>
+<p>Method <strong>navigator.clipboard.read</strong> availability: <span id="method-read-availability"></span></p>
+<p>Method <strong>navigator.clipboard.readText</strong> availability: <span id="method-read-text-availability"></span>
+<p>Method <strong>navigator.clipboard.write</strong> availability: <span id="method-write-availability"></span></p>
+<p>Method <strong>navigator.clipboard.writeText</strong> availability: <span id="method-write-text-availability"></span>
+</p>
+
+<img src="" id="clipboard-image" alt="Some Image From Clipboard" width="200" height="200">
+<textarea id="clipboard-text" cols="30" rows="10"></textarea>
+<div id="clipboard-html"></div>
+
+<hr/>
+
+<img src="bird.png" id="clipboard-image-write" alt="Some Image From Clipboard" width="200" height="200">
+<textarea id="clipboard-text-write" cols="30" rows="10">Rare Pastel Bird</textarea>
+<div id="clipboard-html-write">
+    <span style="background: red;padding: 0 2px;font-weight: bold;">Red</span>
+    <span style="background: green;padding: 0 2px;font-weight: bold;">Green</span>
+    <span style="background: blue;padding: 0 2px;font-weight: bold;">Blue</span>
+</div>
+<button id="copy-image">Copy Image</button>
+<button id="copy-text">Copy Text</button>
+<button id="copy-html">Copy HTML</button>
+
+<script>
+    navigator.permissions
+            .query({name: 'clipboard-write'})
+            .then(({state}) => window['clipboard-write-permission'].innerText = state)
+            .catch(err => {
+                window['clipboard-write-permission'].innerText = 'not supported';
+                console.log(err.message);
+            });
+    navigator.permissions
+            .query({name: 'clipboard-read'})
+            .then(({state}) => window['clipboard-read-permission'].innerText = state)
+            .catch(err => {
+                window['clipboard-read-permission'].innerText = 'not supported';
+                console.log(err.message);
+            });
+
+    window['method-read-availability'].innerText = navigator.clipboard.read ? 'available' : 'not available';
+    window['method-read-text-availability'].innerText = navigator.clipboard.readText ? 'available' : 'not available';
+
+    const writeAvailable = !!navigator.clipboard.write;
+    window['method-write-availability'].innerText = writeAvailable ? 'available' : 'not available';
+    window['method-write-text-availability'].innerText = navigator.clipboard.writeText ? 'available' : 'not available';
+
+    window['copy-image'].disabled = !writeAvailable;
+    window['copy-text'].disabled = !writeAvailable;
+    window['copy-html'].disabled = !writeAvailable;
+</script>
+<script>
+
+    if (navigator.clipboard.read) {
+        navigator.clipboard.read().then(data => {
+            for (let i = 0; i < data.length; i++) {
+                console.log({data: data[i]});
+                if (data[i].types.includes('text/html')) {
+                    data[i].getType('text/html').then(blob => blob.text().then(html => window['clipboard-html'].innerHTML = html));
+                }
+                if (data[i].types.includes('text/plain')) {
+                    // data[i].getType('text/plain').then(blob => blob.text().then(text => window['clipboard-text'].value = text));
+                }
+                if (data[i].types.includes('image/png')) {
+                    data[i].getType('image/png').then(blob => window['clipboard-image'].src = URL.createObjectURL(blob));
+                }
+            }
+        });
+    }
+    if (navigator.clipboard.readText) {
+        navigator.clipboard.readText().then(text => window['clipboard-text'].value = text);
+    }
+</script>
+<script>
+    window['copy-image'].onclick = () => {
+        const imgURL = window['clipboard-image-write'].src;
+        fetch(imgURL)
+                .then(data => data.blob())
+                .then(blob => navigator.clipboard.write([new ClipboardItem({[blob.type]: blob})]))
+                .then(() => console.log('Copy image - done!'));
+    };
+</script>
+<script>
+    window['copy-text'].onclick = () => {
+        const text = window['clipboard-text-write'].value;
+        // navigator.clipboard.write([new ClipboardItem({'text/plain': new Blob([text], {type: 'text/plain'})})])
+        //         .then(() => console.log('Copy text - done!'));
+
+        navigator.clipboard.writeText(text)
+                .then(() => console.log('Copy text - done!'));
+    };
+</script>
+<script>
+    window['copy-html'].onclick = () => {
+        const html = window['clipboard-html-write'].innerHTML;
+        navigator.clipboard.write([new ClipboardItem({'text/html': new Blob([html], {type: 'text/html'})})])
+                .then(() => console.log('Copy html - done!'));
+    };
+</script>
+</body>
+</html>
